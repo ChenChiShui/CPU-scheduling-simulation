@@ -1,6 +1,7 @@
 import random
 from time import sleep
-from ReadyQue import readyQueue1
+# from ReadyQue import readyQueue1
+from ReadyQue import ReadyQue
 from Process import Process
 
 class CPU:
@@ -10,7 +11,7 @@ class CPU:
         # 空闲英文 idle
         self.idle = True
         # 初始闲逛进程
-        self.working_process = Process(0, "init", 0, 0)
+        self.working_process = Process(0, "init", 0, 0, 0)
         # 等待队列先放这里
         self.wait_queue = []
         pass
@@ -51,7 +52,7 @@ class CPU:
         if self.interrupt_status :
             self.interrupt_status = False
             self.wait_queue.append(self.working_process)
-            self.working_process = Process(0, "init", 0, 0)
+            self.working_process = Process(0, "init", 0, 0, 0)
             # 此处开始走时钟，但实际上啥也不变
             for i in range(interrupt_time):
                 # 此处需要图形化？
@@ -70,7 +71,8 @@ class CPU:
     # 在此处进行进程选择
     def get_next_process(self):
         # ------------ 下面是一个例子
-        p = readyQueue1.pop()
+        import main
+        p = main.readyQueue1.pop()
         self.working_process = p
         p.run(self.clock)
         return
