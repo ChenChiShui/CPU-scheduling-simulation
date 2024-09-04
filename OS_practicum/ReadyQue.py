@@ -81,6 +81,8 @@ class ReadyQue:
     def get_que_tot_time(self) -> int:
         return self._que_tot_time
 
+    def get_que_priority(self) -> int:
+        return self._que_priority
 
 # 就绪队列里实际上是PCB,只有两个内容, 进程和优先级
 # 就绪队列会对PCB的优先级建堆

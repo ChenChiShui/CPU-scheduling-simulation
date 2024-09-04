@@ -53,7 +53,7 @@ class Process:
     # 进程运行一个时钟单位
     def run_for_1clock(self):
         # assert self.run_time + add_time <= self.tot_time
-        self._run_time -= 1
+        self._run_time += 1
         self._check_consistency()
 
     def get_pid(self) -> int:
@@ -61,6 +61,9 @@ class Process:
 
     def get_que_id(self) -> int:
         return self._que_id
+
+    def get_name(self) -> str:
+        return self._name
 
     # 是否已经完成
     def is_dead(self) -> bool:
