@@ -39,6 +39,8 @@ class CPU_class:
 
     def clock_next(self) -> int:
         self.clock += 1
+        if self.working_process.time_get_run() == 1 and self.working_process != HANGING:
+            print("\033[1m<<<-----new_process---->>>\033[0m")
         print("clock:", self.clock)
         print("working_process:", self.working_process.get_name() if self.interrupt_status else "solving I/O")
         print("I/O:", self.interrupt_status)
@@ -55,9 +57,9 @@ class CPU_class:
             if self.idle:
                 self.get_next_process()
 
-            # # 某种办法激活 io 现在先 random
-            # if random.randint(1, 3) == 1:
-            #     self.interrupt_happen(random.randint(1, 1))
+            # 某种办法激活 io 现在先 random
+            if random.randint(1, 3) == 1:
+                self.interrupt_happen(random.randint(1, 1))
 
             self.working_process.run_for_1clock()
             pass
