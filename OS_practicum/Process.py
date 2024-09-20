@@ -18,7 +18,9 @@
 - 这些函数在运行时候, 都会assert检查数据合法性
 
 - 包含一个特殊的进程HANGING, 作为闲逛进程, 已经实例化
--
+-   2024.9.20 现在觉得HANGING不应该是单例了
+-   arrive_time, run_time 变来变去的
+-   直接现场生成吧还是
 """
 
 
@@ -72,8 +74,10 @@ class Process:
     # 很多关于时间的变量, 这里约定凡是查询时间的, 都用time_get开头的函数
     def time_get_waiting(self) -> int:
         def get_cpu_clock() -> int:
-            import main
-            return main.clock
+            # import main
+            # return main.clock
+            import CPU_Core
+            return CPU_Core.CPU_core_clock
 
         waiting_time = get_cpu_clock() - self._arrive_time
         assert waiting_time >= 0
@@ -91,6 +95,11 @@ class Process:
     def time_get_total(self) -> int:
         assert self._tot_time >= 0
         return self._tot_time
+    
+    # 修改已经运行的时间
+    def time_set_run(self, run_time: int):
+        assert run_time > self._run_time
+        self._run_time = run_time
 
     def time_get_run(self) -> int:
         assert self._run_time >= 0
@@ -98,4 +107,5 @@ class Process:
 
 
 # 闲逛进程
-HANGING = Process(name='Hanging', arrive_time=0, tot_time=1, que_id=0)
+# 2024.9.20 废除了
+# HANGING = Process(name='Hanging', arrive_time=0, tot_time=1, que_id=0)

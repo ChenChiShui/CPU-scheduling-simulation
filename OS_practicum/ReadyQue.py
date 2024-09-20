@@ -1,8 +1,8 @@
 from Process import Process
-from Process import HANGING
 import random
 import heapq
 from typing import Optional
+from typing import Union
 
 """
 - 就绪队列ReadyQue类:
@@ -69,11 +69,12 @@ class ReadyQue:
 
     # 根据算法, 在队列中选择一个进程, 如果队列是空的, 返回一个闲逛进程的单例
     # 返回的是[进程, 计划时间]
-    def pop(self) -> [Process, int]:
+    def pop(self) -> Union[Process, int]:
         top = self._pcb_heap.pop()
         # top是None的话, 返回一个T=1的闲逛进程
         if not top:
-            return HANGING, 1
+            from CPU_Core import CPU_core_clock
+            return Process(name='HANGING', arrive_time=CPU_core_clock, tot_time=1, que_id=0), 1
         self._que_tot_time -= top.process.time_get_rest()
         assert self._que_tot_time >= 0
         return top.process, min(self._time_clip, top.process.time_get_rest())
@@ -83,6 +84,10 @@ class ReadyQue:
 
     def get_que_priority(self) -> int:
         return self._que_priority
+    
+    def maintain(self, curr_clk: int) -> None:
+        #
+        ...
 
 # 就绪队列里实际上是PCB,只有两个内容, 进程和优先级
 # 就绪队列会对PCB的优先级建堆
