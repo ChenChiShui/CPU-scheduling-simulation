@@ -109,12 +109,29 @@ class MainWindow(tk.Tk):
                   )
         self.interrupt_button.pack(side=tk.LEFT, padx=5)
 
+        self.save_table_button = tk.Button(button_frame2, 
+                  text='Save Table', 
+                  command=self.save_table,
+                  width=15,
+                  height=2,
+                  font=('Arial', 12)
+                  )
+        self.save_table_button.pack(side=tk.LEFT, padx=5)
+
+
         # 初始化内容
         self.refresh_content()
 
         # 自动刷新标志和任务ID
         self.auto_refresh = False
         self.auto_refresh_task = None
+
+    def save_table(self):
+        # 调用CPU的方法来生成和保存表格
+        filename = "completed_processes.txt"  
+        self.cpu_core.generate_and_save_table(filename)
+        messagebox.showinfo("保存成功", f"表格已保存至 {filename}")
+
 
     def create_area(self, index, label, parent=None, side=None, width=380, height=150):
         if parent:

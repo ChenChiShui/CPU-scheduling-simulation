@@ -4,6 +4,7 @@ from typing import Any
 from typing import List
 from typing import Union
 import random
+from prettytable import PrettyTable
 
 CPU_core_clock = 0
 
@@ -19,6 +20,8 @@ class CPU_Core:
         self.user_require_interrupt = False
         # 等待队列用来存放被打断的进程, 等待队列出来的进程不会上cpu, 而是回到ReadyQue
         self._waiting_list = ReadyQue(algo='FIFO', priority=0, time_clip=1) 
+        self.completed_processes = []  # 新增：用于存储已完成的进程
+
 
     # if que 有问题
     def _get_next_process(self) -> Union[Process, int]:
@@ -95,8 +98,16 @@ class CPU_Core:
             
     # 丢弃当前在CPU上的进程到统计列表
     def _throw_away(self):
-        self._process_on_core = None
-        ...    
+        if self._process_on_core:
+            self.completed_processes.append({
+                'pid': self._process_on_core._pid,
+                'name': self._process_on_core._name,
+                'arrive_time': self._process_on_core._arrive_time,
+                'tot_time': self._process_on_core._tot_time,
+                'run_time': self._process_on_core._run_time,
+                'que_id': self._process_on_core._que_id
+            })
+        self._process_on_core = None    
                 
     # 返回None, None 或者[Process, int]
     def _interrupt_happen(self):
@@ -124,3 +135,20 @@ class CPU_Core:
         global CPU_core_clock
         res = CPU_core_clock
         return res
+    
+    def generate_and_save_table(self, filename):
+        table = PrettyTable()
+        table.field_names = ["PID", "Name", "Arrive Time", "Total Time", "Run Time", "Queue ID"]
+        
+        for process in self.completed_processes:
+            table.add_row([
+                process['pid'],
+                process['name'],
+                process['arrive_time'],
+                process['tot_time'],
+                process['run_time'],
+                process['que_id']
+            ])
+        
+        with open(filename, 'w') as f:
+            f.write(str(table))
