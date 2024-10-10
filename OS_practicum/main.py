@@ -24,7 +24,7 @@ if __name__ == '__main__':
         ['HRRN', []]
     ]
     ls2 = [
-        ['Waiting', []],
+        ['Waiting Queue', []],
         ['CPU', []]
     ]
 

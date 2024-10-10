@@ -1,7 +1,8 @@
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, simpledialog, messagebox
 import random
 import string
+from Process import Process
 
 class MainWindow(tk.Tk):
     def __init__(self, ls1, ls2, cpu_core, process_generator, rq_list):
@@ -13,10 +14,11 @@ class MainWindow(tk.Tk):
         self.process_generator = process_generator
         self.rq_list = rq_list
         self.auto_gen = True
+        self.user_require_interrupt = False
 
         # 设置窗口标题和大小
         self.title("操作系统课设——多级反馈队列调度模拟")
-        self.geometry("800x700")
+        self.geometry("900x700")
 
         # 初始化存储区域列表
         self.areas = []
@@ -38,14 +40,24 @@ class MainWindow(tk.Tk):
         bottom_frame.pack(fill=tk.X, padx=10, pady=5)
 
         for i, area_info in enumerate(ls2, start=len(ls1)):
-            self.create_area(i, area_info[0], parent=bottom_frame, side=tk.LEFT)
+            self.create_area(i, area_info[0], parent=bottom_frame, side=tk.LEFT, width=300, height=100)
 
-        # 创建一个框架来容纳按钮
-        button_frame = ttk.Frame(self)
-        button_frame.pack(side=tk.BOTTOM, pady=10)
+        # 创建CPU时钟显示区域
+        self.cpu_clock_frame = ttk.Frame(bottom_frame, borderwidth=2, relief="groove", width=180, height=100)
+        self.cpu_clock_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.cpu_clock_frame.pack_propagate(False)
+        self.cpu_clock_label = ttk.Label(self.cpu_clock_frame, text="CPU_CLOCK: []", font=('Arial', 12))
+        self.cpu_clock_label.pack(expand=True)
 
-        # 创建四个按钮
-        tk.Button(button_frame, 
+        # 创建两个框架来容纳按钮
+        button_frame1 = ttk.Frame(self)
+        button_frame1.pack(side=tk.BOTTOM, pady=(0, 5))
+        
+        button_frame2 = ttk.Frame(self)
+        button_frame2.pack(side=tk.BOTTOM, pady=(0, 10))
+
+        # 创建按钮
+        tk.Button(button_frame1, 
                   text='Next Clock', 
                   command=self.refresh_content,
                   width=15,
@@ -53,15 +65,7 @@ class MainWindow(tk.Tk):
                   font=('Arial', 12)
                   ).pack(side=tk.LEFT, padx=5)
 
-        tk.Button(button_frame, 
-                  text='Add A Process', 
-                  command=lambda: self.add_square(0),
-                  width=15,
-                  height=2,
-                  font=('Arial', 12)
-                  ).pack(side=tk.LEFT, padx=5)
-
-        self.auto_button = tk.Button(button_frame, 
+        self.auto_button = tk.Button(button_frame1, 
                   text='Auto Start', 
                   command=self.toggle_auto_refresh,
                   width=15,
@@ -70,7 +74,15 @@ class MainWindow(tk.Tk):
                   )
         self.auto_button.pack(side=tk.LEFT, padx=5)
 
-        self.gen_button = tk.Button(button_frame, 
+        tk.Button(button_frame2, 
+                  text='Add A Process', 
+                  command=self.add_process_dialog,
+                  width=15,
+                  height=2,
+                  font=('Arial', 12)
+                  ).pack(side=tk.LEFT, padx=5)
+
+        self.gen_button = tk.Button(button_frame2, 
                   text='Stop Gen', 
                   command=self.toggle_gen,
                   width=15,
@@ -79,8 +91,7 @@ class MainWindow(tk.Tk):
                   )
         self.gen_button.pack(side=tk.LEFT, padx=5)
 
-        # 新增的 Unjam Waiting List 按钮
-        self.unjam_button = tk.Button(button_frame, 
+        self.unjam_button = tk.Button(button_frame2, 
                   text='Unjam Waiting List', 
                   command=self.toggle_jam_waiting_list,
                   width=15,
@@ -89,6 +100,15 @@ class MainWindow(tk.Tk):
                   )
         self.unjam_button.pack(side=tk.LEFT, padx=5)
 
+        self.interrupt_button = tk.Button(button_frame2, 
+                  text='Interrupt', 
+                  command=self.set_interrupt,
+                  width=15,
+                  height=2,
+                  font=('Arial', 12)
+                  )
+        self.interrupt_button.pack(side=tk.LEFT, padx=5)
+
         # 初始化内容
         self.refresh_content()
 
@@ -96,9 +116,9 @@ class MainWindow(tk.Tk):
         self.auto_refresh = False
         self.auto_refresh_task = None
 
-    def create_area(self, index, label, parent=None, side=None):
+    def create_area(self, index, label, parent=None, side=None, width=380, height=150):
         if parent:
-            area = ttk.Frame(parent, borderwidth=2, relief="groove", width=380, height=150)
+            area = ttk.Frame(parent, borderwidth=2, relief="groove", width=width, height=height)
             area.pack(side=side, fill=tk.BOTH, expand=True, padx=5, pady=5)
         else:
             area = ttk.Frame(self, borderwidth=2, relief="groove")
@@ -114,23 +134,31 @@ class MainWindow(tk.Tk):
         
         self.areas.append(inner_frame)
 
-    def add_square(self, area_index):
-        color = self.area_colors[area_index % len(self.area_colors)]
+    def add_process_dialog(self):
+        while True:
+            name = simpledialog.askstring("Input", "Enter process name:")
+            if name is None:
+                return  # User cancelled
+            if name.strip() == "":
+                messagebox.showerror("Error", "Process name cannot be empty. Please try again.")
+                continue
+            break
+
+        while True:
+            total_time = simpledialog.askinteger("Input", "Enter total time (must be an integer greater than 1):")
+            if total_time is None:
+                return  # User cancelled
+            if not isinstance(total_time, int) or total_time <= 1:
+                messagebox.showerror("Error", "Total time must be an integer greater than 1. Please try again.")
+                continue
+            break
+        t = self.cpu_core.get_cpu_clock()
+        p = Process(name=name, arrive_time=t, tot_time=total_time, que_id=0)
+        self.rq_list[0].offer(p)
+
+        print(f"Adding new process: Name = {name}, Total Time = {total_time}")
+        # Here you can add the logic to actually add the process to your system
         
-        square = tk.Frame(self.areas[area_index], width=120, height=60, bg=color, highlightbackground="black", highlightthickness=1)
-        square.pack(side=tk.LEFT, padx=2, pady=2)
-        square.pack_propagate(False)
-
-        random_string = ''.join(random.choices(string.ascii_uppercase, k=3))
-        random_int1 = random.randint(1, 100)
-        random_int2 = random.randint(1, 100)
-
-        tk.Label(square, text=random_string, bg=color, fg="white").pack(fill=tk.X)
-        tk.Label(square, text=f"arrive_time: [{random_int1}]", bg=color, fg="white").pack(fill=tk.X)
-        tk.Label(square, text=f"rest_time: [{random_int2}]", bg=color, fg="white").pack(fill=tk.X)
-        
-        print(f"在区域 {area_index + 1} 添加了一个新方块")
-
     def refresh_content(self):
         self.cpu_core.run_for_1clk()
         if self.auto_gen:
@@ -155,31 +183,44 @@ class MainWindow(tk.Tk):
             
             color = self.area_colors[i % len(self.area_colors)]
             
-            for item in content:
-                # Check if it's in the CPU area and the name is 'HANGING'
-                if i == len(self.areas) - 1 and (item[0] == 'HANGING' or item[0] == 'Interrupt'):
-                    square_color = 'red'
-                else:
-                    square_color = color
+            if i == len(self.areas) - 1:  # CPU区域
+                if content:  # 如果有内容
+                    item = content[0]
+                    if item[0] == 'HANGING':
+                        square_color = 'green'
+                    elif 'Interrupt' in item[0]:
+                        square_color = 'red'
+                    else:
+                        square_color = 'orange'
 
-                square = tk.Frame(area, width=120, height=60, bg=square_color, highlightbackground="black", highlightthickness=1)
-                square.pack(side=tk.LEFT, padx=2, pady=2)
-                square.pack_propagate(False)
+                    square = tk.Frame(area, width=120, height=60, bg=square_color, highlightbackground="black", highlightthickness=1)
+                    square.pack(expand=True)
+                    square.pack_propagate(False)
 
-                tk.Label(square, text=item[0], bg=square_color, fg="white").pack(fill=tk.X)
-                tk.Label(square, text=f"arrive_time: [{item[1]}]", bg=square_color, fg="white").pack(fill=tk.X)
-                tk.Label(square, text=f"rest_time: [{item[2]}]", bg=square_color, fg="white").pack(fill=tk.X)
+                    tk.Label(square, text=item[0], bg=square_color, fg="white").pack(fill=tk.X)
+                    tk.Label(square, text=f"arrive_time: [{item[1]}]", bg=square_color, fg="white").pack(fill=tk.X)
+                    tk.Label(square, text=f"rest_time: [{item[2]}]", bg=square_color, fg="white").pack(fill=tk.X)
+            else:
+                for item in content:
+                    square = tk.Frame(area, width=120, height=60, bg=color, highlightbackground="black", highlightthickness=1)
+                    square.pack(side=tk.LEFT, padx=2, pady=2)
+                    square.pack_propagate(False)
+
+                    tk.Label(square, text=item[0], bg=color, fg="white").pack(fill=tk.X)
+                    tk.Label(square, text=f"arrive_time: [{item[1]}]", bg=color, fg="white").pack(fill=tk.X)
+                    tk.Label(square, text=f"rest_time: [{item[2]}]", bg=color, fg="white").pack(fill=tk.X)
+
+        # 更新 CPU 时钟显示
+        self.cpu_clock_label.config(text=f"CPU_CLOCK: [{self.cpu_core.get_cpu_clock()}]")
 
     def toggle_auto_refresh(self):
         if self.auto_refresh:
-            # 停止自动刷新
             self.auto_refresh = False
             if self.auto_refresh_task:
                 self.after_cancel(self.auto_refresh_task)
                 self.auto_refresh_task = None
             self.auto_button.config(text="Auto Start")
         else:
-            # 开始自动刷新
             self.auto_refresh = True
             self.auto_button.config(text="Stop Auto")
             self.auto_refresh_content()
@@ -197,11 +238,12 @@ class MainWindow(tk.Tk):
             self.gen_button.config(text="Start Gen")
     
     def toggle_jam_waiting_list(self):
-        # 取反 cpu_core 的 jam_waiting_list 属性
         self.cpu_core.jam_waiting_list = not self.cpu_core.jam_waiting_list
-        
-        # 更新按钮文字
         if self.cpu_core.jam_waiting_list:
             self.unjam_button.config(text="Unjam Waiting List")
         else:
             self.unjam_button.config(text="Jam Waiting List")
+
+    def set_interrupt(self):
+        self.cpu_core.user_require_interrupt = True
+        print("User interrupt requested")
