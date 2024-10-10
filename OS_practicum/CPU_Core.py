@@ -11,7 +11,7 @@ class CPU_Core:
     def __init__(self, que_list: List[ReadyQue]) -> None:
         if not que_list:
             raise ValueError(f'Waiting queue list cannot be empty!')
-        
+        self.jam_waiting_list = True
         self._que_list = que_list
         self._process_on_core: Process = None
         self._scheduled_time = 0 # 当前进程计划再跑多长时间
@@ -23,8 +23,9 @@ class CPU_Core:
     # if que 有问题
     def _get_next_process(self) -> Union[Process, int]:
         for que in self._que_list:
-            if que:
-                return que.pop()
+            temp, t = que.pop()
+            if temp.get_name() != 'HANGING':
+                return temp, t
         return self._que_list[0].pop()
             
     
@@ -51,18 +52,21 @@ class CPU_Core:
             # 如果当前进程时间耗尽
             if self._process_on_core and self._process_on_core.get_name().startswith("Interrupt"):
                 # 如果做完的任务是中断, 唤醒, 开中断
-                self._awake_waiting_list()
+                if not self.jam_waiting_list:
+                    self._awake_waiting_list()
                 self._open_4interrupt = True
             self._throw_away()
-            interrupt, scheduled_time = self._interrupt_happen()
-            if interrupt != None and self._open_4interrupt:
-                # 如果来了新中断, 且开中断, 就安排新中断
-                self._scheduled_time = scheduled_time
-                self._process_on_core = interrupt
-                self._open_4interrupt = False
-            if not self._process_on_core:
-                # 如果还没事做, 就问反馈队列要一个
-                self._process_on_core, self._scheduled_time = self._get_next_process()
+        interrupt, scheduled_time = self._interrupt_happen()
+        if interrupt != None and self._open_4interrupt:
+            # 如果来了新中断, 且开中断, 就安排新中断
+            self._scheduled_time = scheduled_time
+            if self._process_on_core:
+                self._waiting_list.offer(self._process_on_core)
+            self._process_on_core = interrupt
+            self._open_4interrupt = False
+        if not self._process_on_core:
+            # 如果还没事做, 就问反馈队列要一个
+            self._process_on_core, self._scheduled_time = self._get_next_process()
         # 跑一个时钟
         self._scheduled_time -= 1
         self._process_on_core.run_for_1clock()
@@ -78,8 +82,9 @@ class CPU_Core:
     def _awake_waiting_list(self):
         if self._waiting_list:
             process, _ = self._waiting_list.pop()
-            self._que_list[0].offer(process=process)            
-
+            if process.get_name() != 'HANGING':
+                self._que_list[0].offer(process=process)            
+            
     # 丢弃当前在CPU上的进程到统计列表
     def _throw_away(self):
         self._process_on_core = None
@@ -92,3 +97,13 @@ class CPU_Core:
             t = random.randint(1, 5)
             return Process(name="Interrupt", arrive_time=CPU_core_clock, tot_time=t, que_id=0), t
         return None, None
+    
+    def get_now_onboard(self):
+        res = []
+        if self._process_on_core:
+            temp = [self._process_on_core.get_name(), self._process_on_core.time_get_arrive(), self._process_on_core.time_get_rest()]
+            res.append(temp)
+        return res
+    
+    def get_waiting_list(self):
+        return self._waiting_list.get_que_list()

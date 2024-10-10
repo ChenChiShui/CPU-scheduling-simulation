@@ -10,7 +10,7 @@ class ProcessGenerator:
     def run_for_1clk(self) -> None:
         n = len(self._rq_list)
         for que in self._rq_list:
-            if random.randint(1, n) % n == 0:
+            if random.randint(1, n + 1) % n == 0:
                 from CPU_Core import CPU_core_clock
                 global process_cnt
                 process_cnt += 1

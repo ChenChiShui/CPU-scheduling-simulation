@@ -1,0 +1,207 @@
+import tkinter as tk
+from tkinter import ttk
+import random
+import string
+
+class MainWindow(tk.Tk):
+    def __init__(self, ls1, ls2, cpu_core, process_generator, rq_list):
+        super().__init__()  # 初始化父类
+        
+        self.ls1 = ls1
+        self.ls2 = ls2
+        self.cpu_core = cpu_core
+        self.process_generator = process_generator
+        self.rq_list = rq_list
+        self.auto_gen = True
+
+        # 设置窗口标题和大小
+        self.title("操作系统课设——多级反馈队列调度模拟")
+        self.geometry("800x700")
+
+        # 初始化存储区域列表
+        self.areas = []
+
+        # 扩展渐变颜色列表
+        self.area_colors = [
+            "#0000FF", "#0033CC", "#0066CC", "#0099CC", "#00CCCC",
+            "#00FFCC", "#33FFCC", "#66FFCC", "#99FFCC", "#CCFFCC",
+            "#1E90FF", "#4169E1", "#4682B4", "#5F9EA0", "#6495ED",
+            "#7B68EE", "#87CEFA", "#ADD8E6", "#B0C4DE", "#B0E0E6"
+        ]
+
+        # 创建上部分区域
+        for i, area_info in enumerate(ls1):
+            self.create_area(i, area_info[0])
+
+        # 创建下部分区域
+        bottom_frame = ttk.Frame(self)
+        bottom_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        for i, area_info in enumerate(ls2, start=len(ls1)):
+            self.create_area(i, area_info[0], parent=bottom_frame, side=tk.LEFT)
+
+        # 创建一个框架来容纳按钮
+        button_frame = ttk.Frame(self)
+        button_frame.pack(side=tk.BOTTOM, pady=10)
+
+        # 创建四个按钮
+        tk.Button(button_frame, 
+                  text='Next Clock', 
+                  command=self.refresh_content,
+                  width=15,
+                  height=2,
+                  font=('Arial', 12)
+                  ).pack(side=tk.LEFT, padx=5)
+
+        tk.Button(button_frame, 
+                  text='Add A Process', 
+                  command=lambda: self.add_square(0),
+                  width=15,
+                  height=2,
+                  font=('Arial', 12)
+                  ).pack(side=tk.LEFT, padx=5)
+
+        self.auto_button = tk.Button(button_frame, 
+                  text='Auto Start', 
+                  command=self.toggle_auto_refresh,
+                  width=15,
+                  height=2,
+                  font=('Arial', 12)
+                  )
+        self.auto_button.pack(side=tk.LEFT, padx=5)
+
+        self.gen_button = tk.Button(button_frame, 
+                  text='Stop Gen', 
+                  command=self.toggle_gen,
+                  width=15,
+                  height=2,
+                  font=('Arial', 12)
+                  )
+        self.gen_button.pack(side=tk.LEFT, padx=5)
+
+        # 新增的 Unjam Waiting List 按钮
+        self.unjam_button = tk.Button(button_frame, 
+                  text='Unjam Waiting List', 
+                  command=self.toggle_jam_waiting_list,
+                  width=15,
+                  height=2,
+                  font=('Arial', 12)
+                  )
+        self.unjam_button.pack(side=tk.LEFT, padx=5)
+
+        # 初始化内容
+        self.refresh_content()
+
+        # 自动刷新标志和任务ID
+        self.auto_refresh = False
+        self.auto_refresh_task = None
+
+    def create_area(self, index, label, parent=None, side=None):
+        if parent:
+            area = ttk.Frame(parent, borderwidth=2, relief="groove", width=380, height=150)
+            area.pack(side=side, fill=tk.BOTH, expand=True, padx=5, pady=5)
+        else:
+            area = ttk.Frame(self, borderwidth=2, relief="groove")
+            area.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        
+        area.pack_propagate(False)
+        
+        label_widget = ttk.Label(area, text=label)
+        label_widget.pack(pady=5)
+        
+        inner_frame = ttk.Frame(area)
+        inner_frame.pack(expand=True, fill=tk.BOTH)
+        
+        self.areas.append(inner_frame)
+
+    def add_square(self, area_index):
+        color = self.area_colors[area_index % len(self.area_colors)]
+        
+        square = tk.Frame(self.areas[area_index], width=120, height=60, bg=color, highlightbackground="black", highlightthickness=1)
+        square.pack(side=tk.LEFT, padx=2, pady=2)
+        square.pack_propagate(False)
+
+        random_string = ''.join(random.choices(string.ascii_uppercase, k=3))
+        random_int1 = random.randint(1, 100)
+        random_int2 = random.randint(1, 100)
+
+        tk.Label(square, text=random_string, bg=color, fg="white").pack(fill=tk.X)
+        tk.Label(square, text=f"arrive_time: [{random_int1}]", bg=color, fg="white").pack(fill=tk.X)
+        tk.Label(square, text=f"rest_time: [{random_int2}]", bg=color, fg="white").pack(fill=tk.X)
+        
+        print(f"在区域 {area_index + 1} 添加了一个新方块")
+
+    def refresh_content(self):
+        self.cpu_core.run_for_1clk()
+        if self.auto_gen:
+            self.process_generator.run_for_1clk()
+
+        # hard code
+        for i in range(5):
+            self.ls1[i][1] = self.rq_list[i].get_que_list()
+        # waiting list
+        self.ls2[0][1] = self.cpu_core.get_waiting_list()
+        # CPU current
+        self.ls2[1][1] = self.cpu_core.get_now_onboard()
+
+        for i, area in enumerate(self.areas):
+            for widget in area.winfo_children():
+                widget.destroy()
+            
+            if i < len(self.ls1):
+                content = self.ls1[i][1]
+            else:
+                content = self.ls2[i - len(self.ls1)][1]
+            
+            color = self.area_colors[i % len(self.area_colors)]
+            
+            for item in content:
+                # Check if it's in the CPU area and the name is 'HANGING'
+                if i == len(self.areas) - 1 and (item[0] == 'HANGING' or item[0] == 'Interrupt'):
+                    square_color = 'red'
+                else:
+                    square_color = color
+
+                square = tk.Frame(area, width=120, height=60, bg=square_color, highlightbackground="black", highlightthickness=1)
+                square.pack(side=tk.LEFT, padx=2, pady=2)
+                square.pack_propagate(False)
+
+                tk.Label(square, text=item[0], bg=square_color, fg="white").pack(fill=tk.X)
+                tk.Label(square, text=f"arrive_time: [{item[1]}]", bg=square_color, fg="white").pack(fill=tk.X)
+                tk.Label(square, text=f"rest_time: [{item[2]}]", bg=square_color, fg="white").pack(fill=tk.X)
+
+    def toggle_auto_refresh(self):
+        if self.auto_refresh:
+            # 停止自动刷新
+            self.auto_refresh = False
+            if self.auto_refresh_task:
+                self.after_cancel(self.auto_refresh_task)
+                self.auto_refresh_task = None
+            self.auto_button.config(text="Auto Start")
+        else:
+            # 开始自动刷新
+            self.auto_refresh = True
+            self.auto_button.config(text="Stop Auto")
+            self.auto_refresh_content()
+
+    def auto_refresh_content(self):
+        if self.auto_refresh:
+            self.refresh_content()
+            self.auto_refresh_task = self.after(100, self.auto_refresh_content)
+
+    def toggle_gen(self):
+        self.auto_gen = not self.auto_gen
+        if self.auto_gen:
+            self.gen_button.config(text="Stop Gen")
+        else:
+            self.gen_button.config(text="Start Gen")
+    
+    def toggle_jam_waiting_list(self):
+        # 取反 cpu_core 的 jam_waiting_list 属性
+        self.cpu_core.jam_waiting_list = not self.cpu_core.jam_waiting_list
+        
+        # 更新按钮文字
+        if self.cpu_core.jam_waiting_list:
+            self.unjam_button.config(text="Unjam Waiting List")
+        else:
+            self.unjam_button.config(text="Jam Waiting List")

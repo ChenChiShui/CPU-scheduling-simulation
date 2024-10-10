@@ -3,6 +3,8 @@ import random
 import heapq
 from typing import Optional
 from typing import Union
+from typing import List
+from typing import Tuple
 
 """
 - 就绪队列ReadyQue类:
@@ -88,6 +90,15 @@ class ReadyQue:
     def maintain(self, curr_clk: int) -> None:
         #
         ...
+    
+    # 队列内的所有PCB返回为一个列表, 每个元素是List[str, int, int], 分别是进程名, 到达时间, 剩余时间
+    def get_que_list(self) -> List[Tuple[str, int, int]]:
+        res = []
+        for pcb in self._pcb_heap._heap:
+            p:Process = pcb.process
+            temp = [p.get_name(), p.time_get_arrive(), p.time_get_rest()]
+            res.append(temp)
+        return res
 
 # 就绪队列里实际上是PCB,只有两个内容, 进程和优先级
 # 就绪队列会对PCB的优先级建堆
