@@ -15,7 +15,7 @@ class MainWindow(tk.Tk):
         self.rq_list = rq_list
         self.auto_gen = True
         self.user_require_interrupt = False
-
+        self.open_random_interrupt = False
         # 设置窗口标题和大小
         self.title("操作系统课设——多级反馈队列调度模拟")
         self.geometry("900x700")
@@ -118,7 +118,15 @@ class MainWindow(tk.Tk):
                   )
         self.save_table_button.pack(side=tk.LEFT, padx=5)
 
-
+        # 添加新的 "Open Random" 按钮
+        self.random_button = tk.Button(button_frame2,
+                  text='Open Random: False',
+                  command=self.toggle_open_random,
+                  width=20,
+                  height=2,
+                  font=('Arial', 12)
+                  )
+        self.random_button.pack(side=tk.LEFT, padx=5)
         # 初始化内容
         self.refresh_content()
 
@@ -152,28 +160,47 @@ class MainWindow(tk.Tk):
         self.areas.append(inner_frame)
 
     def add_process_dialog(self):
+        # 获取进程名称
         while True:
             name = simpledialog.askstring("Input", "Enter process name:")
             if name is None:
-                return  # User cancelled
+                return  # 用户取消输入
             if name.strip() == "":
                 messagebox.showerror("Error", "Process name cannot be empty. Please try again.")
                 continue
             break
 
+        # 获取进程的总运行时间
         while True:
             total_time = simpledialog.askinteger("Input", "Enter total time (must be an integer greater than 1):")
             if total_time is None:
-                return  # User cancelled
+                return  # 用户取消输入
             if not isinstance(total_time, int) or total_time <= 1:
                 messagebox.showerror("Error", "Total time must be an integer greater than 1. Please try again.")
                 continue
             break
-        t = self.cpu_core.get_cpu_clock()
-        p = Process(name=name, arrive_time=t, tot_time=total_time, que_id=0)
-        self.rq_list[0].offer(p)
 
-        print(f"Adding new process: Name = {name}, Total Time = {total_time}")
+        # 获取队列编号（1-5）
+        while True:
+            queue_number = simpledialog.askinteger("Input", "Enter queue number (1-5):")
+            if queue_number is None:
+                return  # 用户取消输入
+            if queue_number not in range(1, 6):
+                messagebox.showerror("Error", "Queue number must be between 1 and 5. Please try again.")
+                continue
+            break
+
+        # 获取当前 CPU 时钟时间
+        t = self.cpu_core.get_cpu_clock()
+
+        # 创建进程对象，队列ID设为用户选择的队列编号减1（因为队列通常从0开始）
+        p = Process(name=name, arrive_time=t, tot_time=total_time, que_id=queue_number - 1)
+
+        # 将进程添加到指定的队列中
+        self.rq_list[queue_number - 1].offer(p)
+
+        print(f"Adding new process: Name = {name}, Total Time = {total_time}, Queue = {queue_number}")
+
         # Here you can add the logic to actually add the process to your system
         
     def refresh_content(self):
@@ -264,3 +291,9 @@ class MainWindow(tk.Tk):
     def set_interrupt(self):
         self.cpu_core.user_require_interrupt = True
         print("User interrupt requested")
+
+    def toggle_open_random(self):
+        # 切换 open_random 的布尔值
+        self.cpu_core.open_random_interrupt = not self.cpu_core.open_random_interrupt
+        # 更新按钮的文本
+        self.random_button.config(text=f"Random Interrupt: {self.cpu_core.open_random_interrupt}")

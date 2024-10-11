@@ -13,6 +13,7 @@ class CPU_Core:
         if not que_list:
             raise ValueError(f'Waiting queue list cannot be empty!')
         self.jam_waiting_list = True
+        self.open_random_interrupt = False
         self._que_list = que_list
         self._process_on_core: Process = None
         self._scheduled_time = 0 # 当前进程计划再跑多长时间
@@ -116,9 +117,10 @@ class CPU_Core:
             self.user_require_interrupt = False
             t = random.randint(4, 6)
             return Process(name="USER Interrupt", arrive_time=CPU_core_clock, tot_time=t, que_id=0), t
-        if random.randint(1, 7) == 1:
-            t = random.randint(1, 5)
-            return Process(name="Random Interrupt", arrive_time=CPU_core_clock, tot_time=t, que_id=0), t
+        if self.open_random_interrupt:
+            if random.randint(1, 7) == 1:
+                t = random.randint(1, 5)
+                return Process(name="Random Interrupt", arrive_time=CPU_core_clock, tot_time=t, que_id=0), t
         return None, None
     
     def get_now_onboard(self):
